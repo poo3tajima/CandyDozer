@@ -4,28 +4,58 @@ using UnityEngine;
 
 public class Shooter : MonoBehaviour
 {
-    public GameObject candyPrefab;  // CandyPrefabプロパティ
+    public GameObject[] candyPrefabs;
+    public Transform candyParentTransform;
+    public CandyManager candyManager;
     public float shotForce;
     public float shotTorque;
+    public float baseWidth;
 
     void Update()
     {
+        // Unityに登録されているFire1ボタンが押されたとき(クリックか左矢印)
         if (Input.GetButtonDown("Fire1")) Shot();  // 入力の検知
+    }
+
+
+    // キャンディのプレハブからランダムに1つ選ぶ
+    GameObject SampleCandy()
+    {
+        int index = Random.Range(0, candyPrefabs.Length);
+        return candyPrefabs[index];
+    }
+
+    Vector3 GetInstantiatePosition()
+    {
+        // 舞台のサイズとクリックの位置の割合でキャンディ生成のx座標を算出
+        float x = baseWidth * (Input.mousePosition.x / Screen.width) - (baseWidth / 2);
+        return transform.position + new Vector3(x, 0, 0);
     }
 
 
     public void Shot()
     {
+        // キャンディを生成できる条件外ならばShotしない
+        if (candyManager.GetCandyAmount() <= 0) return;
+
         // プレハブからCandyオブジェクトを生成
         GameObject candy = Instantiate(
-            candyPrefab,
-            transform.position,
+            SampleCandy(),
+            GetInstantiatePosition(),  // ダミーオブジェクトの位置を取得して発射  
             Quaternion.identity
-        );  // オブジェクトの生成
+        );
+
+        // 生成したCandyオブジェクトの親をcandyParentTransformに設定する(グループ化するだけ)
+        candy.transform.parent = candyParentTransform;
 
         // CandyオブジェクトのRigidbodyを取得し力と回転を加える
         Rigidbody candyRigidBody = candy.GetComponent<Rigidbody>();
-        candyRigidBody.AddForce(transform.forward * shotForce);  // フォースとトルクの加算
+        // shotForce値で打ち出す強さを決める
+        candyRigidBody.AddForce(transform.forward * shotForce);
+        // y軸に回転をあたえる
         candyRigidBody.AddTorque(new Vector3(0, shotTorque, 0));
+
+        // Candyのストックを消費
+        candyManager.ConsumeCandy();
     }
 }
